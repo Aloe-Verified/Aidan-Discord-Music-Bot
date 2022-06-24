@@ -8,7 +8,6 @@ const client = new Discord.Client({
 });
 
 const {prefix,token} = require("./config.json");
-var connection = null;
 
 client.commands = new Discord.Collection();
 const commandFiles = fs.readdirSync('./commands/').filter(file => file.endsWith('.js'));
@@ -50,12 +49,10 @@ client.on("messageCreate", message => {
   
 
   else if(command == "play"){
-    connection = client.commands.get('play').execute(client,message,args,);
+    client.commands.get('play').execute(client,message,args);
   }
-  else if(command == "stop"){
-    if(connection){
-      connection.destroy();
-      connection = null;
+  else if(command == "skip"){
+    client.commands.get('skip').execute(client,message,args);
     }
     
   }
