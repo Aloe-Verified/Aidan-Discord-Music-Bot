@@ -1,73 +1,119 @@
-const { Client, Intents, DiscordAPIError} = require("discord.js");
-const Discord = require("discord.js");
-const fs = require('fs');
-const ytdl = require('ytdl-core');
-const { joinVoiceChannel } = require('@discordjs/voice');
-const client = new Discord.Client({
-  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_VOICE_STATES]
+require("dotenv").config();
+
+const fs = require("fs");
+const path = require("path");
+
+const localFfmpeg = path.join(__dirname, "vendor", "ffmpeg", "ffmpeg.exe");
+if (!process.env.FFMPEG_PATH && fs.existsSync(localFfmpeg)) {
+  process.env.FFMPEG_PATH = localFfmpeg;
+}
+const { Client, GatewayIntentBits, Collection, Events } = require("discord.js");
+const { Player } = require("discord-player");
+const { DefaultExtractors } = require("@discord-player/extractor");
+const { prefix } = require("./config.json");
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
-const {prefix} = require("./config.json");
+const player = new Player(client);
 
-client.commands = new Discord.Collection();
-const commandFiles = fs.readdirSync('./commands/').filter(file => file.endsWith('.js'));
-  for(const file of commandFiles){
-      const command = require(`./commands/${file}`);
-   
-      client.commands.set(command.name, command);
+client.commands = new Collection();
+const commandsPath = path.join(__dirname, "commands");
+const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith(".js"));
+
+for (const file of commandFiles) {
+  const command = require(path.join(commandsPath, file));
+  if (!command?.name) continue;
+  client.commands.set(command.name, command);
+}
+
+client.once(Events.ClientReady, (readyClient) => {
+  console.log(`ready as ${readyClient.user.tag}`);
+});
+
+player.events.on("playerStart", (queue, track) => {
+  const channel = queue.metadata?.channel;
+  if (channel) {
+    channel.send(`Now playing: **${track.title}**`).catch(() => {});
   }
+});
 
-client.on("ready", () => {
-    console.log("ready");
-})
+player.events.on("error", (_queue, error) => {
+  console.error("Player error:", error);
+});
 
-const queue = new Map();
-client.on("messageCreate", message => {
-  // Exit and stop if the prefix is not there or if user is a bot
+player.events.on("playerError", (_queue, error) => {
+  console.error("Playback error:", error);
+});
+
+client.on(Events.MessageCreate, async (message) => {
   if (!message.content.startsWith(prefix) || message.author.bot) return;
-  // else
-    const args = message.content.slice(prefix.length).split(/ +/g);
-    const command = args.shift().toLowerCase();
 
-  // if (message.content.startsWith(prefix+"foo")) {
-  //   message.channel.send("bar!");
-  // }
-  if (command === "asl") {
-    let age = args[0]; // Remember arrays are 0-based!.
-    let sex = args[1];
-    let location = args[2];
-    message.reply(`Hello ${message.author.username}, I see you're a ${age} year old ${sex} from ${location}.`);
-  }
-  if (command === "kick") {
-    let member = message.mentions.members.first();
-    member.kick();
-  }
-  if (command === "clear"){
-      message.delete();
+  const args = message.content.slice(prefix.length).trim().split(/ +/g);
+  const commandName = args.shift().toLowerCase();
+
+  if (commandName === "asl") {
+    const [age, sex, location] = args;
+    return message.reply(
+      `Hello ${message.author.username}, I see you're a ${age} year old ${sex} from ${location}.`
+    );
   }
 
-  
-
-  else if(command == "play"){
-    client.commands.get('play').execute(client,message,args);
-  }
-  else if(command == "skip"){
-    client.commands.get('skip').execute(client,message,args);
+  if (commandName === "kick") {
+    const member = message.mentions.members?.first();
+    if (!member) return message.channel.send("Mention someone to kick.");
+    try {
+      await member.kick();
+    } catch (error) {
+      console.error(error);
+      return message.channel.send("I could not kick that member.");
     }
-    
+    return;
   }
-  
-  
 
+  if (commandName === "clear") {
+    await message.delete().catch(() => {});
+    return;
+  }
+
+  const command =
+    client.commands.get(commandName) ||
+    client.commands.find((cmd) => cmd.aliases?.includes(commandName));
+
+  if (!command) return;
+
+  try {
+    await command.execute(client, message, args);
+  } catch (error) {
+    console.error(error);
+    await message.channel.send("Something went wrong running that command.");
+  }
 });
 
-
-
-client.on("messageCreate", (message) => {
-  if (message.content.startsWith("zain")) {
-    message.channel.send("stupid");
+async function start() {
+  if (!process.env.DISCORD_TOKEN) {
+    console.error("Set DISCORD_TOKEN in your environment or a .env file.");
+    process.exit(1);
   }
+
+  const { YoutubeExtractor } = await import("discord-player-youtube");
+
+  await player.extractors.register(YoutubeExtractor, {
+    cookie: process.env.YOUTUBE_COOKIE,
+    disableYTJSLog: true,
+  });
+  await player.extractors.loadMulti(DefaultExtractors);
+
+  await client.login(process.env.DISCORD_TOKEN);
+}
+
+start().catch((error) => {
+  console.error(error);
+  process.exit(1);
 });
-
-
-client.login(process.env.DISCORD_TOKEN);

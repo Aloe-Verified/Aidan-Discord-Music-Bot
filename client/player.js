@@ -1,13 +1,7 @@
-const{Player} = require("discord-player");
-const { Client } = require("discord.js");
-const client = require("../index.js");
+const { useMainPlayer } = require("discord-player");
 
-const player = new Player(client,{
-    ytdlOptions: {
-        quality:"highestaudio",
-        highWaterMark: 1<<25,
-    
-    },
-});
-
-module.exports = player;
+module.exports = {
+  getPlayer() {
+    return useMainPlayer();
+  },
+};
