@@ -7,7 +7,7 @@ const client = new Discord.Client({
   intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_VOICE_STATES]
 });
 
-const {prefix,token} = require("./config.json");
+const {prefix} = require("./config.json");
 
 client.commands = new Discord.Collection();
 const commandFiles = fs.readdirSync('./commands/').filter(file => file.endsWith('.js'));
@@ -70,4 +70,4 @@ client.on("messageCreate", (message) => {
 });
 
 
-client.login(token);
+client.login(process.env.DISCORD_TOKEN);
