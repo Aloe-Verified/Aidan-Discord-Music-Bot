@@ -6,11 +6,11 @@
     "start": "node index.js",
     "test": "node --check index.js && node --check commands/play.js && node --check commands/skip.js && node --check commands/tp.js && node --check client/player.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "engines": {
-    "node": ">=18"
+    "node": "20.x"
+  },
+  "overrides": {
+    "jsdom": "26.1.0"
   },
   "dependencies": {
     "@discord-player/extractor": "^7.1.0",
