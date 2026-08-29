@@ -1,16 +1,26 @@
 module.exports = {
   name: "repeat",
-  description: "repeat the text you pass in",
+  description: "repeat text a given number of times",
   execute: async (_client, message, args) => {
-    const text = args.join(" ").trim();
-    if (!text) {
-      return message.channel.send("Give me something to repeat.");
+    const count = Number.parseInt(args[0], 10);
+    const text = args.slice(1).join(" ").trim();
+
+    if (!Number.isInteger(count) || count < 1 || !text) {
+      return message.channel.send("Usage: `-repeat <number> <text>`");
     }
 
-    if (text.length > 2000) {
-      return message.channel.send("That message is too long to send.");
+    if (count > 50) {
+      return message.channel.send("I can only repeat something up to 50 times.");
     }
 
-    return message.channel.send(text);
+    const output = Array.from({ length: count }, () => text).join("\n");
+
+    if (output.length <= 2000) {
+      return message.channel.send(output);
+    }
+
+    for (let i = 0; i < output.length; i += 2000) {
+      await message.channel.send(output.slice(i, i + 2000));
+    }
   },
 };
