@@ -9,9 +9,6 @@
   "engines": {
     "node": "20.x"
   },
-  "overrides": {
-    "jsdom": "26.1.0"
-  },
   "dependencies": {
     "@discord-player/extractor": "^7.1.0",
     "discord-player": "^7.2.0",
